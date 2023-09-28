@@ -64,7 +64,7 @@ export class User {
   @Column({ default: false })
   is_trainer: boolean;
 
-  @Column({nullable: true, type: 'longtext'})
+  @Column({ nullable: true, type: 'longtext' })
   hashedRt: string;
 
   constructor(user: Partial<User>) {

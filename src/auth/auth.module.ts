@@ -7,12 +7,13 @@ import { RtStrategy } from './strategies/rt-strategy';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { Account } from './entities/account.entity';
 
 @Module({
   imports: [
     JwtModule.register({}),
     ConfigModule,
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Account]),
   ],
   controllers: [AuthController],
   providers: [AuthService, AtStrategy, RtStrategy],

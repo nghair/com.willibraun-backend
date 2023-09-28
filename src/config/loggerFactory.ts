@@ -1,14 +1,21 @@
 import { transports, format } from 'winston';
-import { WinstonModule, utilities as nestWinstonModuleUtilities } from 'nest-winston';
+import {
+  WinstonModule,
+  utilities as nestWinstonModuleUtilities,
+} from 'nest-winston';
 
 export const LoggerFactory = (appName: string) => {
-  let consoleFormat; 
+  let consoleFormat;
 
-  const DEBUG = process.env.DEBUG
-  const USE_JSON_LOGGER = process.env.USE_JSON_LOGGER
+  const DEBUG = process.env.DEBUG;
+  const USE_JSON_LOGGER = process.env.USE_JSON_LOGGER;
 
   if (USE_JSON_LOGGER === 'true') {
-    consoleFormat = format.combine(format.ms(), format.timestamp(), format.json());
+    consoleFormat = format.combine(
+      format.ms(),
+      format.timestamp(),
+      format.json(),
+    );
   } else {
     consoleFormat = format.combine(
       format.timestamp(),

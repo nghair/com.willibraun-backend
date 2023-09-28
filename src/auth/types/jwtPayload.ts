@@ -1,6 +1,6 @@
 type JwtPayload = {
-    sub,
-    email,
-    isAdmin,
-    isTrainer
-  }
+  sub;
+  email;
+  isAdmin;
+  isTrainer;
+};

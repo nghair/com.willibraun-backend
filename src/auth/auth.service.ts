@@ -14,11 +14,13 @@ import { signupAuthDto } from './dto/signupAuthDto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { EntityManager, In, IsNull, Not, Repository } from 'typeorm';
+import { Account } from './entities/account.entity';
+import { createAccountDto } from './dto/create-account-dto';
+import { v4 as uuid } from 'uuid';
 
 @Injectable()
 export class AuthService {
-  
-  private logger= new Logger('AuthService');
+  private logger = new Logger('AuthService');
 
   constructor(
     @InjectRepository(User)
@@ -26,15 +28,28 @@ export class AuthService {
     private entityManager: EntityManager,
     private jqtService: JwtService,
     private configService: ConfigService,
+    @InjectRepository(Account)
+    private readonly accountRepository: Repository<Account>,
   ) {}
 
   async signup(createUserDto: signupAuthDto): Promise<Tokens> {
+
+    const isRegisterTokenValid = await this.isRegisterTokenValid(createUserDto.registerToken);
+    this.logger.log(createUserDto.registerToken);
+    if(!isRegisterTokenValid){
+      throw new ConflictException('Registration token is invalid.');
+    }
+
     const hash = await this.hashData(createUserDto.password);
     createUserDto.password = hash;
     const user = new User(createUserDto);
     try {
       this.logger.log('create new user');
       const user_created = await this.entityManager.save(user);
+
+      //delete register token
+      await this.removeRegisterToken(createUserDto.registerToken);
+
       this.logger.log('New User Created. GetTokens');
       const tokens = await this.getTokens(
         user_created.id,
@@ -89,59 +104,116 @@ export class AuthService {
           updateUserDto.waitinglist_email_agreement;
       }
       */
-  
+
   async signin(username: string, password: string): Promise<Tokens> {
     this.logger.log('sigining in user');
     const user = await this.findOne(username);
     //this.usersRepository.findOne({
-      //where: { username },
+    //where: { username },
     //});
-    if(!user){
+    if (!user) {
       this.logger.log('User not found', username);
       throw new ForbiddenException('Access Denied');
     }
 
-    if(!await bycrypt.compare(password, user.password)){
+    if (!(await bycrypt.compare(password, user.password))) {
       this.logger.log('Password incorrect');
       throw new ForbiddenException('Access Denied');
     }
 
     this.logger.log('User Authorized. GetTokens');
-    const tokens = await this.getTokens(user.id, user.email, user.is_admin, user.is_trainer);
+    const tokens = await this.getTokens(
+      user.id,
+      user.email,
+      user.is_admin,
+      user.is_trainer,
+    );
     this.logger.log('Tokens created. Update RT in database');
     await this.updateRtHash(user.id, tokens.refresh_token);
     this.logger.log('RT updated. Return tokens');
     return tokens;
   }
 
-  async refresh(userId: string, refreshToken: string){
+  async refresh(userId: string, refreshToken: string) {
     this.logger.log('refreshing token');
-    const user = await this.usersRepository.findOneBy( { id: In([userId])});
+    const user = await this.usersRepository.findOneBy({ id: In([userId]) });
 
-    if(!user){
+    if (!user) {
       this.logger.log('User not found');
       throw new ForbiddenException('Access Denied');
     }
     this.logger.log(user.hashedRt);
     this.logger.log(refreshToken);
-    const rtMatches = bycrypt.compareSync(refreshToken, user.hashedRt);
+    const rtMatches = refreshToken == user.hashedRt; //bycrypt.compareSync(refreshToken, user.hashedRt);
     this.logger.log(rtMatches);
-    if(! rtMatches){
+    if (!rtMatches) {
       this.logger.log('Incorrect refresh token');
       throw new ForbiddenException('Access Denied');
     }
-   
+
     this.logger.log('User Authorized. GetTokens');
-    const tokens = await this.getTokens(user.id, user.email, user.is_admin, user.is_trainer);
+    const tokens = await this.getTokens(
+      user.id,
+      user.email,
+      user.is_admin,
+      user.is_trainer,
+    );
     this.logger.log('Tokens created. Update RT in database');
     await this.updateRtHash(user.id, tokens.refresh_token);
-    this.logger.log('RT updated. Return tokens'); 
+    this.logger.log('RT updated. Return tokens');
     return tokens;
   }
 
-  async signout(userId: string){
-    this.logger.log('signing out user' +  userId);
-    await this.usersRepository.update({ id: In([userId]), hashedRt:Not(IsNull()) }, { hashedRt: null });
+  async signout(userId: string) {
+    this.logger.log('signing out user' + userId);
+    const x = await this.usersRepository.update(
+      { id: In([userId]), hashedRt: Not(IsNull()) },
+      { hashedRt: null },
+    );
+    this.logger.log(x);
+  }
+
+  async register(createAccountDto: createAccountDto){
+    const account = new Account(createAccountDto);
+    //account.hashedToken = uuid();
+    //this.logger.log('Random token: ' + account.hashedToken);
+    account.expiryDate = new Date(Date.now() + (7 * 86400000) );
+    this.logger.log('Random token: ' + account.expiryDate);
+    try {
+      this.logger.log('Register new account');
+      const create_account = await this.entityManager.save(account);
+      this.logger.log('New account registered.');
+    } catch (error) {
+      if (error.errno == 1062) {
+        this.logger.error('Account already registered with the email.', error);
+        //Duplicate email
+        throw new ConflictException('Account with the given email already exists.');
+      } else {
+        this.logger.error('Unexpected error : ', error);
+        throw new InternalServerErrorException();
+      }
+    }
+  }
+
+  async isRegisterTokenValid(token: string): Promise<boolean>{
+    const account = await this.accountRepository.findOneBy({id: token});
+    if(account==null){
+      this.logger.log('token not valid');
+      return false;
+    }
+    if(account.expiryDate < new Date(Date.now())){
+      this.logger.log('token expired');
+      return false;
+    }
+
+    return true;
+  }
+
+  async removeRegisterToken(token: string): Promise<boolean>{
+    this.logger.log('Remove used token');
+    const anyva = await this.accountRepository.delete({id: token});
+    this.logger.log(anyva);
+    return true;
   }
 
   async getTokens(
@@ -186,7 +258,7 @@ export class AuthService {
   }
 
   async updateRtHash(userId: string, rt: string) {
-    await this.usersRepository.update({ id: In([userId])}, { hashedRt: rt });
+    await this.usersRepository.update({ id: In([userId]) }, { hashedRt: rt });
   }
 
   hashData(data: string) {

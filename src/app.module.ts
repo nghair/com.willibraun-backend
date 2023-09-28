@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { WinstonModule } from 'nest-winston';
+import { StudioModule } from './studio/studio.module';
+import { CoursesModule } from './courses/courses.module';
 import winston from 'winston';
 
 @Module({
@@ -13,7 +15,9 @@ import winston from 'winston';
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     TypeOrmModule,
-    AuthModule
+    AuthModule,
+    StudioModule,
+    CoursesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
