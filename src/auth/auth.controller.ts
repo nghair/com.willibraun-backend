@@ -24,11 +24,12 @@ export class AuthController {
     this.mailService.sendUserPasswordResetRequest('jain.mihir95@gmail.com', 'Mihir', 'r798f0uj3frio032e320i');
   }
 
-  @Post('register')
+  @Post('register-new-user')
   @UseGuards(AtGuards)
   @ApiSecurity('JWT-auth')
-  register(@Req() req: Request, @Body() registerDto: createAccountDto) {
+  registerNewUser(@Req() req: Request, @Body() registerDto: createAccountDto) {
     const user = req.user;
+    this.logger.log({method: 'registerNewUser' ,message: 'Register new User', ip: req.ip, sub: user['sub'], path: req.url, userAgent: req.headers['user-agent']},);
     this.logger.log('User is Admin: ' + user['isAdmin']);
     if (user['isAdmin'] != true) {
       throw new ConflictException('User not authorized');

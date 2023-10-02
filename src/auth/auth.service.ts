@@ -188,8 +188,13 @@ export class AuthService {
       await this.entityManager.save(account);
       //this.mailService.sendRegistrationConfirmation(account.email, account.first_name, account.id);
       this.eventEmitter.emit(
-        'sendRegistrationConfirmation', 
-        new RegistrationConfirmationEvent(account.id, account.email, account.first_name));
+        'sendRegistrationConfirmation',
+        new RegistrationConfirmationEvent(
+          account.id,
+          account.email,
+          account.first_name,
+        ),
+      );
       this.logger.log('New account registered.');
     } catch (error) {
       if (error.errno == 1062) {

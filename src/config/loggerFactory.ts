@@ -36,7 +36,7 @@ export const LoggerFactory = (appName: string) => {
   }
 
   return WinstonModule.createLogger({
-    level: DEBUG ? 'debug' : 'info',
+    level: 'debug',//DEBUG ? 'debug' : 'info',
     //transports: [new transports.Console({ format: consoleFormat })],
     transports: [
       new transports.DailyRotateFile({
