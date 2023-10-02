@@ -1,40 +1,28 @@
-import {
-  Body,
-  ConflictException,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Logger,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, ConflictException, Controller, Get, HttpCode, HttpStatus, Logger, Param, Post, Req, UseGuards,} from '@nestjs/common';
 import { authDto } from './dto/loginAuth.dto';
-import { log } from 'console';
 import { Tokens } from './types/tokens.types';
 import { AuthService } from './auth.service';
 import { signupAuthDto } from './dto/signupAuthDto';
-import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { RtGuards } from 'src/common/guards/rt-guards';
 import { AtGuards } from 'src/common/guards/at-guards';
-import {
-  ApiBadRequestResponse,
-  ApiCreatedResponse,
-  ApiResponse,
-  ApiSecurity,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiCreatedResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { createAccountDto } from './dto/create-account-dto';
+import { MailService } from 'src/mail/mail.service';
 
 @Controller('auth')
 @ApiTags('Auth')
 export class AuthController {
   private logger = new Logger('AuthController');
+  constructor(
+    private authService: AuthService,
+    private mailService: MailService,
+    ) {}
 
-  constructor(private authService: AuthService) {}
+  @Get()
+  test(@Req() req: Request){
+    this.mailService.sendUserPasswordResetRequest('jain.mihir95@gmail.com', 'Mihir', 'r798f0uj3frio032e320i');
+  }
 
   @Post('register')
   @UseGuards(AtGuards)
@@ -42,20 +30,28 @@ export class AuthController {
   register(@Req() req: Request, @Body() registerDto: createAccountDto) {
     const user = req.user;
     this.logger.log('User is Admin: ' + user['isAdmin']);
-    if(user['isAdmin']!='true'){
+    if (user['isAdmin'] != true) {
       throw new ConflictException('User not authorized');
     }
-    this.logger.log('User Registration');
+      
+    this.logger.debug({
+      message: 'User Registration',
+      function: 'register'
+    });
     return this.authService.register(registerDto);
   }
 
-  @Get(':token')
-  isRegisterTokenValid(@Param('token') token: string): Promise<boolean>{
+  @Get('register/:token')
+  isRegisterTokenValid(@Param('token') token: string): Promise<boolean> {
     return this.authService.isRegisterTokenValid(token);
   }
 
-  @ApiCreatedResponse({ description: 'Created access and refresh token as response.', })
-  @ApiBadRequestResponse({ description: 'User cannot signup. Please fix the error or try again later', })
+  @ApiCreatedResponse({
+    description: 'Created access and refresh token as response.',
+  })
+  @ApiBadRequestResponse({
+    description: 'User cannot signup. Please fix the error or try again later',
+  })
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
   async signup(@Body() createUserDto: signupAuthDto): Promise<Tokens> {

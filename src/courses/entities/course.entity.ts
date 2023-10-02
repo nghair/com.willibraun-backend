@@ -5,10 +5,7 @@ import {
   ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Timestamp,
 } from 'typeorm';
-import { CourseType } from './courseType.entity';
-import { Studio } from 'src/studio/entities/studio.entity';
 import { CourseSeries } from './courseSeries.entity';
 import { User } from 'src/auth/entities/user.entity';
 import { Locations } from 'src/studio/entities/locations.entity';

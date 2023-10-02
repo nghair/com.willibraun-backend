@@ -1,4 +1,6 @@
 import { transports, format } from 'winston';
+import 'winston-daily-rotate-file';
+
 import {
   WinstonModule,
   utilities as nestWinstonModuleUtilities,
@@ -6,6 +8,10 @@ import {
 
 export const LoggerFactory = (appName: string) => {
   let consoleFormat;
+
+  const myFormat = format.printf(({ level, message, label, timestamp }) => {
+    return `${timestamp} [${label}] ${level}: ${message}`;
+  });
 
   const DEBUG = process.env.DEBUG;
   const USE_JSON_LOGGER = process.env.USE_JSON_LOGGER;
@@ -18,18 +24,33 @@ export const LoggerFactory = (appName: string) => {
     );
   } else {
     consoleFormat = format.combine(
+      format.colorize(),
       format.timestamp(),
       format.ms(),
       nestWinstonModuleUtilities.format.nestLike(appName, {
         colors: true,
         prettyPrint: true,
       }),
+      //myFormat,
     );
   }
 
   return WinstonModule.createLogger({
     level: DEBUG ? 'debug' : 'info',
-    transports: [new transports.Console({ format: consoleFormat })],
-    //transports: [new transports.File({filename: 'willibraun.log'})],
+    //transports: [new transports.Console({ format: consoleFormat })],
+    transports: [
+      new transports.DailyRotateFile({
+        filename: 'logs/%DATE%-willibraun.log',
+        //level: 'info',
+        format: format.combine(format.timestamp(), format.json()),
+        datePattern: 'YYYY-MM-DD',
+        zippedArchive: false,
+        maxFiles: '30d',
+      }),
+
+      new transports.Console({
+        format: consoleFormat,
+      }),
+    ],
   });
 };

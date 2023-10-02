@@ -4,7 +4,6 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Tokens } from './types/tokens.types';
 import { JwtService } from '@nestjs/jwt';
@@ -17,6 +16,9 @@ import { EntityManager, In, IsNull, Not, Repository } from 'typeorm';
 import { Account } from './entities/account.entity';
 import { createAccountDto } from './dto/create-account-dto';
 import { v4 as uuid } from 'uuid';
+import { MailService } from 'src/mail/mail.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { RegistrationConfirmationEvent } from './events/registrationConfirmationEvent';
 
 @Injectable()
 export class AuthService {
@@ -30,13 +32,15 @@ export class AuthService {
     private configService: ConfigService,
     @InjectRepository(Account)
     private readonly accountRepository: Repository<Account>,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async signup(createUserDto: signupAuthDto): Promise<Tokens> {
-
-    const isRegisterTokenValid = await this.isRegisterTokenValid(createUserDto.registerToken);
+    const isRegisterTokenValid = await this.isRegisterTokenValid(
+      createUserDto.registerToken,
+    );
     this.logger.log(createUserDto.registerToken);
-    if(!isRegisterTokenValid){
+    if (!isRegisterTokenValid) {
       throw new ConflictException('Registration token is invalid.');
     }
 
@@ -173,21 +177,27 @@ export class AuthService {
     this.logger.log(x);
   }
 
-  async register(createAccountDto: createAccountDto){
+  async register(createAccountDto: createAccountDto) {
     const account = new Account(createAccountDto);
     //account.hashedToken = uuid();
     //this.logger.log('Random token: ' + account.hashedToken);
-    account.expiryDate = new Date(Date.now() + (7 * 86400000) );
+    account.expiryDate = new Date(Date.now() + 7 * 86400000);
     this.logger.log('Random token: ' + account.expiryDate);
     try {
       this.logger.log('Register new account');
-      const create_account = await this.entityManager.save(account);
+      await this.entityManager.save(account);
+      //this.mailService.sendRegistrationConfirmation(account.email, account.first_name, account.id);
+      this.eventEmitter.emit(
+        'sendRegistrationConfirmation', 
+        new RegistrationConfirmationEvent(account.id, account.email, account.first_name));
       this.logger.log('New account registered.');
     } catch (error) {
       if (error.errno == 1062) {
         this.logger.error('Account already registered with the email.', error);
         //Duplicate email
-        throw new ConflictException('Account with the given email already exists.');
+        throw new ConflictException(
+          'Account with the given email already exists.',
+        );
       } else {
         this.logger.error('Unexpected error : ', error);
         throw new InternalServerErrorException();
@@ -195,13 +205,13 @@ export class AuthService {
     }
   }
 
-  async isRegisterTokenValid(token: string): Promise<boolean>{
-    const account = await this.accountRepository.findOneBy({id: token});
-    if(account==null){
+  async isRegisterTokenValid(token: string): Promise<boolean> {
+    const account = await this.accountRepository.findOneBy({ id: token });
+    if (account == null) {
       this.logger.log('token not valid');
       return false;
     }
-    if(account.expiryDate < new Date(Date.now())){
+    if (account.expiryDate < new Date(Date.now())) {
       this.logger.log('token expired');
       return false;
     }
@@ -209,9 +219,9 @@ export class AuthService {
     return true;
   }
 
-  async removeRegisterToken(token: string): Promise<boolean>{
+  async removeRegisterToken(token: string): Promise<boolean> {
     this.logger.log('Remove used token');
-    const anyva = await this.accountRepository.delete({id: token});
+    const anyva = await this.accountRepository.delete({ id: token });
     this.logger.log(anyva);
     return true;
   }

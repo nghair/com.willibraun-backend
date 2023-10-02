@@ -1,12 +1,9 @@
 import {
   Column,
   CreateDateColumn,
-  DeleteDateColumn,
   Entity,
   Index,
   PrimaryGeneratedColumn,
-  Timestamp,
-  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
