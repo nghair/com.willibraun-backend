@@ -9,6 +9,8 @@ import { AtGuards } from 'src/common/guards/at-guards';
 import { ApiBadRequestResponse, ApiCreatedResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { createAccountDto } from './dto/create-account-dto';
 import { MailService } from 'src/mail/mail.service';
+import { Roles } from './decorators/roles.decorator';
+import { Role } from './entities/role.enum';
 
 @Controller('auth')
 @ApiTags('Auth')
@@ -19,19 +21,15 @@ export class AuthController {
     private mailService: MailService,
     ) {}
 
-  @Get()
-  test(@Req() req: Request){
-    this.mailService.sendUserPasswordResetRequest('jain.mihir95@gmail.com', 'Mihir', 'r798f0uj3frio032e320i');
-  }
-
   @Post('register-new-user')
   @UseGuards(AtGuards)
   @ApiSecurity('JWT-auth')
+  @Roles(Role.ADMIN)
   registerNewUser(@Req() req: Request, @Body() registerDto: createAccountDto) {
     const user = req.user;
     this.logger.log({method: 'registerNewUser' ,message: 'Register new User', ip: req.ip, sub: user['sub'], path: req.url, userAgent: req.headers['user-agent']},);
-    this.logger.log('User is Admin: ' + user['isAdmin']);
     if (user['isAdmin'] != true) {
+      this.logger.warn({method: 'registerNewUser' ,message: 'Non admin user tried to created new user.', ip: req.ip, sub: user['sub'], path: req.url, userAgent: req.headers['user-agent']},);
       throw new ConflictException('User not authorized');
     }
       

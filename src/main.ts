@@ -6,9 +6,9 @@ import { LoggerFactory } from './config/loggerFactory';
 import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  const logger = new Logger('bootstrap');
 
   //Logger builder
+  const logger = new Logger('bootstrap');
   const app = await NestFactory.create(AppModule, {
     logger: LoggerFactory('Willibraun'),
   });
