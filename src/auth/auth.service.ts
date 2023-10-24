@@ -19,6 +19,7 @@ import { v4 as uuid } from 'uuid';
 import { MailService } from 'src/mail/mail.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { RegistrationConfirmationEvent } from './events/registrationConfirmationEvent';
+import { Role } from './entities/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -58,8 +59,7 @@ export class AuthService {
       const tokens = await this.getTokens(
         user_created.id,
         user_created.email,
-        user_created.is_admin,
-        user_created.is_trainer,
+        user_created.role,
       );
       this.logger.log('Tokens created. Update RT in database');
       await this.updateRtHash(user_created.id, tokens.refresh_token);
@@ -129,8 +129,7 @@ export class AuthService {
     const tokens = await this.getTokens(
       user.id,
       user.email,
-      user.is_admin,
-      user.is_trainer,
+      user.role,
     );
     this.logger.log('Tokens created. Update RT in database');
     await this.updateRtHash(user.id, tokens.refresh_token);
@@ -159,8 +158,7 @@ export class AuthService {
     const tokens = await this.getTokens(
       user.id,
       user.email,
-      user.is_admin,
-      user.is_trainer,
+      user.role,
     );
     this.logger.log('Tokens created. Update RT in database');
     await this.updateRtHash(user.id, tokens.refresh_token);
@@ -234,17 +232,19 @@ export class AuthService {
   async getTokens(
     userId: string,
     email: string,
-    isAdmin: boolean,
-    isTrainer: boolean,
+    roles: Role
+    //isAdmin: boolean,
+    //isTrainer: boolean,
   ): Promise<Tokens> {
     const [at, rt] = await Promise.all([
       //AT
       this.jqtService.signAsync(
         {
           sub: userId,
-          email,
-          isAdmin,
-          isTrainer,
+          email,  
+          roles: roles
+          //isAdmin,
+          //isTrainer,
         },
         {
           secret: this.configService.getOrThrow('AT_SECRET'),
@@ -256,8 +256,9 @@ export class AuthService {
         {
           sub: userId,
           email,
-          isAdmin,
-          isTrainer,
+          roles: roles
+          //isAdmin,
+          //isTrainer
         },
         {
           secret: this.configService.getOrThrow('RT_SECRET'),

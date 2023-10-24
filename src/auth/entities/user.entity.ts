@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Role } from './role.enum';
 
 @Entity()
 export class User {
@@ -55,11 +56,14 @@ export class User {
 
   //User account info
 
-  @Column({ default: true })
-  is_active: boolean;
+  //@Column({ default: true })
+  //is_active: boolean;
 
-  @Column({ default: false })
-  is_admin: boolean;
+  //@Column({ default: false })
+  //is_admin: boolean;
+
+  @Column()
+  role: Role;
 
   @Column({ default: false })
   is_trainer: boolean;
